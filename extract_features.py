@@ -50,6 +50,7 @@ def extract_features(data_path, nb_images, verbose=False):
     extract_features computed inceptionv3 bottleneck feature for a list of images
 
     returns: 2-d array in the shape of (len(image_paths), 2048)
+    
     """
     feature_dimension = 2048
 
