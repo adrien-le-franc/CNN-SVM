@@ -1,22 +1,37 @@
+"""
+script designed to extract features calculated with TensorFlow's inceptionv3
+from an image data base.
+
+paths to models' .pb file and image data base parent folder should be modified
+
+nb_images states how many images is in the data base and can be found entering
+UNIX "find . -type f -ls | wc -l" in parent folder (make sure sub folders
+only contain images)
+
+"""
+
 import os
 import csv
 import tensorflow as tf
 import tensorflow.python.platform
 from tensorflow.python.platform import gfile
 import numpy as np
+import argparse
 
 # paths to your own file (to be adapted)
-inception_path = "../../../inceptionv3/tensorflow_inception_graph.pb" # path to inceptionv3 model ".../tensorflow_inception_graph.pb"
-path_to_parent_folder = "../luggage_case/travel_accessoires" # path to image data base parent folder
-nb_images = 396 # can be found entering UNIX "find . -type f -ls | wc -l" in parent folder (make sure sub folders only contain images)
+inception_path = "../../../inceptionv3/tensorflow_inception_graph.pb"
+path_to_parent_folder = "../luggage_case/travel_accessoires"
+
+nb_images = 396
 
 # names of files returned by the programm
 new_features = "features4.txt"
 new_labels = "labels4.txt"
 label_dict = "label_dict4.csv"
 
-# dictionaries to label clusters, will be saved in a csv file
+# dictionaries to label clusters of the data base, will be saved in a csv file
 dictionary = {}
+
 
 def create_graph(model_path):
     """
@@ -30,20 +45,22 @@ def create_graph(model_path):
         _ = tf.import_graph_def(graph_def, name='')
 
 
-def extract_features(data_path, verbose=False):
+def extract_features(data_path, nb_images, verbose=False):
     """
-    extract_features computed the inception bottleneck feature for a list of images
+    extract_features computed inceptionv3 bottleneck feature for a list of images
 
-    return: 2-d array in the shape of (len(image_paths), 2048)
+    returns: 2-d array in the shape of (len(image_paths), 2048)
     """
     feature_dimension = 2048
 
-    # to be returned containing images features and labels
+    # to be returned containing images features and labels, labels stored in
+    # a 1D array to match sklearn expectations
     features = np.empty((nb_images, feature_dimension))
-    labels = np.zeros((nb_images,1)) # labels stored in a 1D array to match sklearn expectations
+    labels = np.zeros((nb_images,1))
 
     with tf.Session() as sess:
-        flattened_tensor = sess.graph.get_tensor_by_name('pool_3:0') # takes features out of pool_3:0 layer
+        # takes features out of pool_3:0 layer
+        flattened_tensor = sess.graph.get_tensor_by_name('pool_3:0')
 
         index = -1
         cluster = -1
@@ -76,10 +93,11 @@ def extract_features(data_path, verbose=False):
 
                     # fill labels
                     features[index, :] = np.squeeze(feature)
-    
+
     # save into txt file
     np.savetxt(new_features,features)
     np.savetxt(new_labels,labels)
+
     # save dict in csv file
     w = csv.writer(open(label_dict, "w"))
     for key, val in dictionary.items():
@@ -87,5 +105,13 @@ def extract_features(data_path, verbose=False):
 
     return features, labels
 
-# create_graph(inception_path)
-# X, Y = extract_features(path_to_parent_folder, verbose=True)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="computes features")
+    parser.add_argument('-m', '--model', type=str, required=True)
+    parser.add_argument('-d', '--data', type=str, required=True)
+    parser.add_argument('-n', '--nb-images', type=int, required=True)
+    args = parser.parse_args()
+
+    create_graph(args.model)
+    X, Y = extract_features(args.data, args.nb_images, verbose=True)
